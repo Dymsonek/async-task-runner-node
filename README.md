@@ -25,6 +25,12 @@ Send a POST request:
 curl -X POST http://localhost:3000/run -H "Content-Type: application/json" -d '{"mode":"parallelLimit", "limit":2}'
 ```
 
+## Run via CLI
+
+```bash
+node cli.js --mode=parallelLimit --limit=2
+```
+
 ## Modes
 
 - `sequential` – Run tasks one by one
