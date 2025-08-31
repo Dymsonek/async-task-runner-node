@@ -1,30 +1,40 @@
 const express = require('express');
-const bodyParser = require('body-parser');
 const { runSequential, runParallel, runParallelLimit } = require('./runner');
-const tasks = require('./tasks');
+const { buildTasksFromSpec, loadTasks } = require('./tasks');
 
 const app = express();
-app.use(bodyParser.json());
+app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
 app.post('/run', async (req, res) => {
-  const { mode = 'sequential', limit = 2 } = req.body;
-  const taskList = tasks.loadTasks();
+  let { mode = 'sequential', limit = 2, tasks: tasksSpec, failFast = false } = req.body || {};
+  if (!['sequential', 'parallel', 'parallelLimit'].includes(mode)) {
+    return res.status(400).json({ error: 'Invalid mode' });
+  }
+  if (mode === 'parallelLimit') {
+    limit = parseInt(limit, 10);
+    if (!Number.isInteger(limit) || limit <= 0) {
+      return res.status(400).json({ error: 'limit must be a positive integer' });
+    }
+  }
+
+  const taskList = tasksSpec ? buildTasksFromSpec(tasksSpec) : loadTasks();
 
   try {
+    let summary;
     if (mode === 'sequential') {
-      await runSequential(taskList);
+      summary = await runSequential(taskList, { failFast });
     } else if (mode === 'parallel') {
-      await runParallel(taskList);
+      summary = await runParallel(taskList, { failFast });
     } else if (mode === 'parallelLimit') {
-      await runParallelLimit(taskList, limit);
-    } else {
-      return res.status(400).json({ error: 'Invalid mode' });
+      summary = await runParallelLimit(taskList, limit, { failFast });
     }
-    res.json({ status: 'completed', mode });
+    res.json({ status: 'completed', ...summary });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    const payload = { error: err.message };
+    if (err.summary) payload.summary = err.summary;
+    res.status(500).json(payload);
   }
 });
 

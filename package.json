@@ -4,7 +4,8 @@
   "description": "A simple Node.js project that demonstrates asynchronous control flow patterns (sequential, parallel, and parallelLimit) using callbacks, promises, and async/await.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "test": "node --test || node tests/run-all.js"
   },
   "author": "",
   "license": "ISC",
