@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Async Task Runner UI</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Async Task Runner</h1>
+      <p>Run tasks via API and visualize a simple timeline.</p>
+    </header>
+
+    <section class="controls">
+      <div class="row">
+        <label>
+          Mode
+          <select id="mode">
+            <option value="sequential">sequential</option>
+            <option value="parallel">parallel</option>
+            <option value="parallelLimit" selected>parallelLimit</option>
+          </select>
+        </label>
+        <label>
+          Limit
+          <input id="limit" type="number" value="2" min="1" />
+        </label>
+        <label class="checkbox">
+          <input id="failFast" type="checkbox" />
+          failFast
+        </label>
+      </div>
+
+      <details>
+        <summary>Task generator (optional)</summary>
+        <div class="row">
+          <label>Count <input id="count" type="number" value="6" min="1" /></label>
+          <label>Min ms <input id="min" type="number" value="100" min="0" /></label>
+          <label>Max ms <input id="max" type="number" value="800" min="0" /></label>
+          <label>Fail at (comma ids) <input id="failAt" placeholder="3,5" /></label>
+        </div>
+      </details>
+
+      <details>
+        <summary>Tasks JSON (optional)</summary>
+        <textarea id="tasksJson" rows="5" placeholder='[{"duration":300},{"duration":500,"fail":true}]'></textarea>
+      </details>
+
+      <div class="row">
+        <button id="runBtn">Run</button>
+        <span id="status"></span>
+      </div>
+    </section>
+
+    <section class="results">
+      <pre id="summary" class="summary"></pre>
+      <div id="timeline" class="timeline"></div>
+    </section>
+
+    <footer>
+      <small>Tip: Toggle failFast and compare strategies.</small>
+    </footer>
+
+    <script src="/app.js"></script>
+  </body>
+  </html>
+

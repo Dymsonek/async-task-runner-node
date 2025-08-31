@@ -40,6 +40,13 @@ node cli.js --mode=parallelLimit --limit=2 --failFast
 
 Provide tasks as JSON:
 node cli.js --mode=parallel --tasks='[{"duration":200},{"duration":400,"fail":true}]'
+
+## UI
+
+- Start server: `npm start`
+- Open `http://localhost:3000/` in your browser
+- Configure mode, limit, failFast, and tasks (via generator or JSON)
+- Click Run to see a JSON summary and a simple Gantt-like timeline of task execution
 ```
 
 ## Modes
@@ -72,4 +79,3 @@ npm test
 ```
 
 This uses Node's built-in test runner (`node --test`) when available, and falls back to a minimal test harness in `tests/run-all.js`.
-
