@@ -77,7 +77,11 @@ async function runParallel(tasks, options = {}) {
   }));
 
   // Assign ids by index for deterministic ordering
-  const results = settled.map((res, i) => ({ id: i + 1, ...(res.status === 'fulfilled' ? res.value : res.reason) }));
+  const results = settled.map((res, i) => {
+    const base = res.status === 'fulfilled' ? res.value : res.reason;
+    // Ensure our assigned id overrides any id present in base
+    return { ...base, id: i + 1 };
+  });
   return summarize('parallel', results, runStarted);
 }
 

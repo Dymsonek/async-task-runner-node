@@ -38,6 +38,14 @@ test('parallel runs tasks concurrently', async () => {
   assert.ok(stats.max >= 2);
 });
 
+test('parallel assigns stable sequential ids', async () => {
+  const stats = { current: 0, max: 0 };
+  const tasks = [makeTask(10, stats), makeTask(5, stats), makeTask(1, stats)];
+  const summary = await runParallel(tasks);
+  const ids = summary.results.map(r => r.id);
+  assert.deepEqual(ids, [1, 2, 3]);
+});
+
 test('parallelLimit enforces limit', async () => {
   const stats = { current: 0, max: 0 };
   const tasks = Array.from({ length: 6 }, () => makeTask(30, stats));
@@ -51,4 +59,3 @@ test('failFast stops early in parallelLimit', async () => {
   const tasks = [makeTask(10, stats), makeTask(10, stats, true), makeTask(10, stats)];
   await assert.rejects(() => runParallelLimit(tasks, 2, { failFast: true }));
 });
-

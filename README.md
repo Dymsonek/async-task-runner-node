@@ -23,13 +23,17 @@ npm start
 Send a POST request:
 ```bash
 curl -X POST http://localhost:3000/run -H "Content-Type: application/json" -d '{"mode":"parallelLimit", "limit":2, "failFast":false}'
+```
 
 You can also provide custom tasks:
 
 Durations array:
+```bash
 curl -X POST http://localhost:3000/run -H "Content-Type: application/json" -d '{"mode":"parallel", "tasks":[{"duration":300},{"duration":500,"fail":true}]}'
+```
 
 Generator spec:
+```bash
 curl -X POST http://localhost:3000/run -H "Content-Type: application/json" -d '{"mode":"parallelLimit","limit":3, "tasks": {"count":10, "min":50, "max":200, "failAt":[3,7]}, "failFast": true}'
 ```
 
@@ -37,9 +41,12 @@ curl -X POST http://localhost:3000/run -H "Content-Type: application/json" -d '{
 
 ```bash
 node cli.js --mode=parallelLimit --limit=2 --failFast
+```
 
 Provide tasks as JSON:
+```bash
 node cli.js --mode=parallel --tasks='[{"duration":200},{"duration":400,"fail":true}]'
+```
 
 ## UI
 
@@ -47,7 +54,6 @@ node cli.js --mode=parallel --tasks='[{"duration":200},{"duration":400,"fail":tr
 - Open `http://localhost:3000/` in your browser
 - Configure mode, limit, failFast, and tasks (via generator or JSON)
 - Click Run to see a JSON summary and a simple Gantt-like timeline of task execution
-```
 
 ## Modes
 
