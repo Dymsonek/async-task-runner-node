@@ -2,6 +2,7 @@
   const $ = (sel) => document.querySelector(sel);
   const modeEl = $('#mode');
   const limitEl = $('#limit');
+  const timeoutMsEl = $('#timeoutMs');
   const failFastEl = $('#failFast');
   const countEl = $('#count');
   const minEl = $('#min');
@@ -23,6 +24,14 @@
     const payload = { mode, failFast };
     if (mode === 'parallelLimit') {
       payload.limit = parseInt(limitEl.value || '2', 10);
+    }
+
+    const tStr = (timeoutMsEl?.value || '').trim();
+    if (tStr) {
+      const tVal = parseInt(tStr, 10);
+      if (Number.isInteger(tVal) && tVal > 0) {
+        payload.timeoutMs = tVal;
+      }
     }
 
     const txt = tasksJsonEl.value.trim();
@@ -114,4 +123,3 @@
     }
   });
 })();
-
