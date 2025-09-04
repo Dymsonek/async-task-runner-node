@@ -9,6 +9,13 @@ const minimist = require('minimist');
   const failFast = Boolean(argv.failFast || argv['fail-fast']);
   const timeoutMs = argv.timeoutMs !== undefined ? parseInt(argv.timeoutMs, 10)
                     : (argv.timeout !== undefined ? parseInt(argv.timeout, 10) : undefined);
+  const retries = argv.retries !== undefined ? parseInt(argv.retries, 10) : undefined;
+  const retryDelayMs = argv.retryDelayMs !== undefined ? parseInt(argv.retryDelayMs, 10)
+                      : (argv.retryDelay !== undefined ? parseInt(argv.retryDelay, 10) : undefined);
+  const backoffFactor = argv.backoffFactor !== undefined ? Number(argv.backoffFactor)
+                        : (argv.backoff !== undefined ? Number(argv.backoff) : undefined);
+  const jitterRatio = argv.jitterRatio !== undefined ? Number(argv.jitterRatio)
+                      : (argv.jitter !== undefined ? Number(argv.jitter) : undefined);
   // Build tasks from CLI if provided: --tasks='[{"duration":500},{"duration":1000,"fail":true}]'
   let tasksSpec = argv.tasks;
   try {
@@ -21,17 +28,17 @@ const minimist = require('minimist');
 
   try {
     if (mode === 'sequential') {
-      const summary = await runSequential(taskList, { failFast, timeoutMs });
+      const summary = await runSequential(taskList, { failFast, timeoutMs, retries, retryDelayMs, backoffFactor, jitterRatio });
       console.log(JSON.stringify(summary, null, 2));
     } else if (mode === 'parallel') {
-      const summary = await runParallel(taskList, { failFast, timeoutMs });
+      const summary = await runParallel(taskList, { failFast, timeoutMs, retries, retryDelayMs, backoffFactor, jitterRatio });
       console.log(JSON.stringify(summary, null, 2));
     } else if (mode === 'parallelLimit') {
       if (!Number.isInteger(limit) || limit <= 0) {
         console.error('Error: --limit must be a positive integer');
         process.exit(1);
       }
-      const summary = await runParallelLimit(taskList, limit, { failFast, timeoutMs });
+      const summary = await runParallelLimit(taskList, limit, { failFast, timeoutMs, retries, retryDelayMs, backoffFactor, jitterRatio });
       console.log(JSON.stringify(summary, null, 2));
     } else {
       console.error('Invalid mode');

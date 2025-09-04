@@ -25,6 +25,38 @@ function withTimeout(fn, ms, id) {
   });
 }
 
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function withRetry(fn, opts = {}, id) {
+  const {
+    retries = 0,
+    retryDelayMs = 100,
+    backoffFactor = 2,
+    jitterRatio = 0.2,
+  } = opts || {};
+  return async () => {
+    let attempt = 0;
+    let delay = Math.max(0, Number(retryDelayMs) || 0);
+    while (true) {
+      attempt++;
+      try {
+        const v = await fn();
+        return { __attempts: attempt, __value: v };
+      } catch (e) {
+        if (attempt > retries) {
+          try { e.attempts = attempt; } catch (_) {}
+          throw e;
+        }
+        const jr = Math.max(0, Math.min(1, Number(jitterRatio) || 0));
+        const jitter = jr ? (Math.random() * 2 - 1) * jr * delay : 0; // +/- jr*delay
+        const wait = Math.max(0, Math.floor(delay + jitter));
+        await sleep(wait);
+        delay = Math.max(0, Math.floor((Number(backoffFactor) || 1) * (delay || retryDelayMs || 0)));
+      }
+    }
+  };
+}
+
 function okResult(id, startedAt, finishedAt, value) {
   return { id, status: 'ok', startedAt, finishedAt, durationMs: finishedAt - startedAt, value };
 }
@@ -45,20 +77,25 @@ function summarize(mode, results, startedAt) {
  * Each task is a function returning a Promise (optionally resolving to a value).
  */
 async function runSequential(tasks, options = {}) {
-  const { failFast = false, timeoutMs } = options;
+  const { failFast = false, timeoutMs, retries, retryDelayMs, backoffFactor, jitterRatio } = options;
   const runStarted = now();
   const taskFns = Array.isArray(tasks)
-    ? tasks.map((t, i) => withTimeout(t, timeoutMs, i + 1))
+    ? tasks.map((t, i) => withRetry(withTimeout(t, timeoutMs, i + 1), { retries, retryDelayMs, backoffFactor, jitterRatio }, i + 1))
     : tasks;
   const results = [];
   for (let i = 0; i < tasks.length; i++) {
     const t = taskFns[i];
     const startedAt = now();
     try {
-      const value = await t();
-      results.push(okResult(i + 1, startedAt, now(), value));
+      const out = await t();
+      const value = out && Object.prototype.hasOwnProperty.call(out, '__value') ? out.__value : out;
+      const attempts = out && Number.isInteger(out.__attempts) ? out.__attempts : 1;
+      const r = okResult(i + 1, startedAt, now(), value);
+      r.attempts = attempts;
+      results.push(r);
     } catch (err) {
       const r = errResult(i + 1, startedAt, now(), err);
+      if (Number.isInteger(err?.attempts)) r.attempts = err.attempts;
       results.push(r);
       if (failFast) {
         // Return partial summary with error results so far
@@ -76,10 +113,10 @@ async function runSequential(tasks, options = {}) {
  * Runs tasks in parallel. If failFast is true, rejects on first error.
  */
 async function runParallel(tasks, options = {}) {
-  const { failFast = false, timeoutMs } = options;
+  const { failFast = false, timeoutMs, retries, retryDelayMs, backoffFactor, jitterRatio } = options;
   const runStarted = now();
   const taskFns = Array.isArray(tasks)
-    ? tasks.map((t, i) => withTimeout(t, timeoutMs, i + 1))
+    ? tasks.map((t, i) => withRetry(withTimeout(t, timeoutMs, i + 1), { retries, retryDelayMs, backoffFactor, jitterRatio }, i + 1))
     : tasks;
 
   if (failFast) {
@@ -87,7 +124,13 @@ async function runParallel(tasks, options = {}) {
     const startedAts = taskFns.map(() => now());
     try {
       const values = await Promise.all(taskFns.map((t) => t()));
-      const results = values.map((v, i) => okResult(i + 1, startedAts[i], now(), v));
+      const results = values.map((out, i) => {
+        const value = out && Object.prototype.hasOwnProperty.call(out, '__value') ? out.__value : out;
+        const attempts = out && Number.isInteger(out.__attempts) ? out.__attempts : 1;
+        const r = okResult(i + 1, startedAts[i], now(), value);
+        r.attempts = attempts;
+        return r;
+      });
       return summarize('parallel', results, runStarted);
     } catch (err) {
       const results = taskFns.map((_, i) => ({ id: i + 1, status: 'unknown' }));
@@ -102,7 +145,13 @@ async function runParallel(tasks, options = {}) {
   const settled = await Promise.allSettled(taskFns.map((t) => {
     const startedAt = now();
     return t().then(
-      (v) => okResult(undefined, startedAt, now(), v),
+      (out) => {
+        const value = out && Object.prototype.hasOwnProperty.call(out, '__value') ? out.__value : out;
+        const attempts = out && Number.isInteger(out.__attempts) ? out.__attempts : 1;
+        const r = okResult(undefined, startedAt, now(), value);
+        r.attempts = attempts;
+        return r;
+      },
       (e) => errResult(undefined, startedAt, now(), e)
     );
   }));
@@ -121,10 +170,10 @@ async function runParallel(tasks, options = {}) {
  */
 async function runParallelLimit(tasks, limit, options = {}) {
   if (!Number.isInteger(limit) || limit <= 0) throw new Error('limit must be a positive integer');
-  const { failFast = false, timeoutMs } = options;
+  const { failFast = false, timeoutMs, retries, retryDelayMs, backoffFactor, jitterRatio } = options;
   const runStarted = now();
   const results = new Array(tasks.length);
-  const taskFns = tasks.map((t, i) => withTimeout(t, timeoutMs, i + 1));
+  const taskFns = tasks.map((t, i) => withRetry(withTimeout(t, timeoutMs, i + 1), { retries, retryDelayMs, backoffFactor, jitterRatio }, i + 1));
 
   let index = 0;
   let running = 0;
@@ -147,9 +196,17 @@ async function runParallelLimit(tasks, limit, options = {}) {
         running++;
         Promise.resolve()
           .then(() => taskFns[i]())
-          .then((v) => { results[i] = okResult(i + 1, startedAt, now(), v); })
+          .then((out) => {
+            const value = out && Object.prototype.hasOwnProperty.call(out, '__value') ? out.__value : out;
+            const attempts = out && Number.isInteger(out.__attempts) ? out.__attempts : 1;
+            const r = okResult(i + 1, startedAt, now(), value);
+            r.attempts = attempts;
+            results[i] = r;
+          })
           .catch((e) => {
-            results[i] = errResult(i + 1, startedAt, now(), e);
+            const r = errResult(i + 1, startedAt, now(), e);
+            if (Number.isInteger(e?.attempts)) r.attempts = e.attempts;
+            results[i] = r;
             if (failFast && !failed) {
               failed = true;
               rejectEarly && rejectEarly(e);

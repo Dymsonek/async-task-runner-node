@@ -77,3 +77,34 @@ test('timeout works in sequential without failing others', async () => {
   assert.equal(summary.succeeded, 2);
   assert.equal(summary.failed, 1);
 });
+
+// Helpers for retry testing
+function flakyTask(failTimes, duration = 10) {
+  let remaining = failTimes;
+  return async () => {
+    await sleep(duration);
+    if (remaining > 0) {
+      remaining--;
+      throw new Error('boom');
+    }
+    return 'ok';
+  };
+}
+
+test('retries eventually succeed and record attempts', async () => {
+  const tasks = [flakyTask(2), flakyTask(0), flakyTask(1)];
+  const t0 = Date.now();
+  const summary = await runParallel(tasks, { retries: 2, retryDelayMs: 10, backoffFactor: 2, jitterRatio: 0 });
+  const elapsed = Date.now() - t0;
+  assert.equal(summary.failed, 0);
+  const attempts = summary.results.map(r => r.attempts);
+  assert.deepEqual(attempts, [3, 1, 2]);
+  assert.ok(elapsed >= 10 + 20, 'backoff delays applied cumulatively');
+});
+
+test('exhausted retries yield error and attempts counted', async () => {
+  const tasks = [flakyTask(3)];
+  const summary = await runSequential(tasks, { retries: 1, retryDelayMs: 5, backoffFactor: 2, jitterRatio: 0, failFast: false });
+  assert.equal(summary.failed, 1);
+  assert.equal(summary.results[0].attempts, 2);
+});

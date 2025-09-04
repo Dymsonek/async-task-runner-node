@@ -7,6 +7,7 @@ A simple Node.js project that demonstrates asynchronous control flow patterns (s
 - Run tasks sequentially, in parallel, or with a limited number of parallel tasks
 - Task execution available via REST API or CLI
 - Optional per-task timeout (`timeoutMs`) across all modes
+- Retries with exponential backoff and jitter (`retries`, `retryDelayMs`, `backoffFactor`, `jitterRatio`)
 
 ## Installation
 
@@ -23,7 +24,7 @@ npm start
 
 Send a POST request:
 ```bash
-curl -X POST http://localhost:3000/run -H "Content-Type: application/json" -d '{"mode":"parallelLimit", "limit":2, "failFast":false, "timeoutMs":300}'
+curl -X POST http://localhost:3000/run -H "Content-Type: application/json" -d '{"mode":"parallelLimit", "limit":2, "failFast":false, "timeoutMs":300, "retries":2, "retryDelayMs":100, "backoffFactor":2, "jitterRatio":0.2}'
 ```
 
 You can also provide custom tasks:
@@ -55,6 +56,12 @@ node cli.js --mode=parallel --timeoutMs=150
 # alias: --timeout=150
 ```
 
+Enable retries with backoff and jitter:
+```bash
+node cli.js --mode=parallelLimit --limit=3 \
+  --retries=2 --retryDelay=100 --backoff=2 --jitter=0.2
+```
+
 ## UI
 
 - Start server: `npm start`
@@ -84,6 +91,8 @@ Both API and CLI return a structured summary object:
 }
 
 If a task exceeds `timeoutMs`, it is marked as an error with `error: "Task N timed out after X ms"`.
+
+If a task fails and `retries > 0`, it will be retried up to `retries` additional attempts. Delays grow by `retryDelayMs * backoffFactor^n` with optional +/- `jitterRatio` randomness. Each result includes `attempts` indicating how many tries were made.
 
 ## Testing
 
