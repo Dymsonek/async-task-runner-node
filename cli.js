@@ -7,6 +7,8 @@ const minimist = require('minimist');
   const mode = argv.mode || 'sequential';
   const limit = parseInt(argv.limit ?? 2, 10);
   const failFast = Boolean(argv.failFast || argv['fail-fast']);
+  const timeoutMs = argv.timeoutMs !== undefined ? parseInt(argv.timeoutMs, 10)
+                    : (argv.timeout !== undefined ? parseInt(argv.timeout, 10) : undefined);
   // Build tasks from CLI if provided: --tasks='[{"duration":500},{"duration":1000,"fail":true}]'
   let tasksSpec = argv.tasks;
   try {
@@ -19,17 +21,17 @@ const minimist = require('minimist');
 
   try {
     if (mode === 'sequential') {
-      const summary = await runSequential(taskList, { failFast });
+      const summary = await runSequential(taskList, { failFast, timeoutMs });
       console.log(JSON.stringify(summary, null, 2));
     } else if (mode === 'parallel') {
-      const summary = await runParallel(taskList, { failFast });
+      const summary = await runParallel(taskList, { failFast, timeoutMs });
       console.log(JSON.stringify(summary, null, 2));
     } else if (mode === 'parallelLimit') {
       if (!Number.isInteger(limit) || limit <= 0) {
         console.error('Error: --limit must be a positive integer');
         process.exit(1);
       }
-      const summary = await runParallelLimit(taskList, limit, { failFast });
+      const summary = await runParallelLimit(taskList, limit, { failFast, timeoutMs });
       console.log(JSON.stringify(summary, null, 2));
     } else {
       console.error('Invalid mode');

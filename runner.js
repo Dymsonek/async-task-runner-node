@@ -1,5 +1,30 @@
 function now() { return Date.now(); }
 
+function withTimeout(fn, ms, id) {
+  if (!Number.isFinite(ms) || ms <= 0) return fn;
+  return () => new Promise((resolve, reject) => {
+    let tid;
+    const onTimeout = () => {
+      const err = new Error(`Task ${id ?? '?'} timed out after ${ms} ms`);
+      err.code = 'ETIMEDOUT';
+      reject(err);
+    };
+    tid = setTimeout(onTimeout, ms);
+    let p;
+    try {
+      p = Promise.resolve().then(() => fn());
+    } catch (e) {
+      clearTimeout(tid);
+      reject(e);
+      return;
+    }
+    p.then(
+      (v) => { clearTimeout(tid); resolve(v); },
+      (e) => { clearTimeout(tid); reject(e); }
+    );
+  });
+}
+
 function okResult(id, startedAt, finishedAt, value) {
   return { id, status: 'ok', startedAt, finishedAt, durationMs: finishedAt - startedAt, value };
 }
@@ -20,11 +45,14 @@ function summarize(mode, results, startedAt) {
  * Each task is a function returning a Promise (optionally resolving to a value).
  */
 async function runSequential(tasks, options = {}) {
-  const { failFast = false } = options;
+  const { failFast = false, timeoutMs } = options;
   const runStarted = now();
+  const taskFns = Array.isArray(tasks)
+    ? tasks.map((t, i) => withTimeout(t, timeoutMs, i + 1))
+    : tasks;
   const results = [];
   for (let i = 0; i < tasks.length; i++) {
-    const t = tasks[i];
+    const t = taskFns[i];
     const startedAt = now();
     try {
       const value = await t();
@@ -48,18 +76,21 @@ async function runSequential(tasks, options = {}) {
  * Runs tasks in parallel. If failFast is true, rejects on first error.
  */
 async function runParallel(tasks, options = {}) {
-  const { failFast = false } = options;
+  const { failFast = false, timeoutMs } = options;
   const runStarted = now();
+  const taskFns = Array.isArray(tasks)
+    ? tasks.map((t, i) => withTimeout(t, timeoutMs, i + 1))
+    : tasks;
 
   if (failFast) {
     // Let Promise.all reject fast; then convert to structured error with partial info
-    const startedAts = tasks.map(() => now());
+    const startedAts = taskFns.map(() => now());
     try {
-      const values = await Promise.all(tasks.map((t, i) => t()));
+      const values = await Promise.all(taskFns.map((t) => t()));
       const results = values.map((v, i) => okResult(i + 1, startedAts[i], now(), v));
       return summarize('parallel', results, runStarted);
     } catch (err) {
-      const results = tasks.map((_, i) => ({ id: i + 1, status: 'unknown' }));
+      const results = taskFns.map((_, i) => ({ id: i + 1, status: 'unknown' }));
       const summary = summarize('parallel', results, runStarted);
       const e = new Error('Task failed (failFast)');
       e.cause = err;
@@ -68,7 +99,7 @@ async function runParallel(tasks, options = {}) {
     }
   }
 
-  const settled = await Promise.allSettled(tasks.map((t) => {
+  const settled = await Promise.allSettled(taskFns.map((t) => {
     const startedAt = now();
     return t().then(
       (v) => okResult(undefined, startedAt, now(), v),
@@ -90,9 +121,10 @@ async function runParallel(tasks, options = {}) {
  */
 async function runParallelLimit(tasks, limit, options = {}) {
   if (!Number.isInteger(limit) || limit <= 0) throw new Error('limit must be a positive integer');
-  const { failFast = false } = options;
+  const { failFast = false, timeoutMs } = options;
   const runStarted = now();
   const results = new Array(tasks.length);
+  const taskFns = tasks.map((t, i) => withTimeout(t, timeoutMs, i + 1));
 
   let index = 0;
   let running = 0;
@@ -114,7 +146,7 @@ async function runParallelLimit(tasks, limit, options = {}) {
         const startedAt = now();
         running++;
         Promise.resolve()
-          .then(() => tasks[i]())
+          .then(() => taskFns[i]())
           .then((v) => { results[i] = okResult(i + 1, startedAt, now(), v); })
           .catch((e) => {
             results[i] = errResult(i + 1, startedAt, now(), e);

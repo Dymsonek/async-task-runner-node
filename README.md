@@ -6,6 +6,7 @@ A simple Node.js project that demonstrates asynchronous control flow patterns (s
 
 - Run tasks sequentially, in parallel, or with a limited number of parallel tasks
 - Task execution available via REST API or CLI
+- Optional per-task timeout (`timeoutMs`) across all modes
 
 ## Installation
 
@@ -22,7 +23,7 @@ npm start
 
 Send a POST request:
 ```bash
-curl -X POST http://localhost:3000/run -H "Content-Type: application/json" -d '{"mode":"parallelLimit", "limit":2, "failFast":false}'
+curl -X POST http://localhost:3000/run -H "Content-Type: application/json" -d '{"mode":"parallelLimit", "limit":2, "failFast":false, "timeoutMs":300}'
 ```
 
 You can also provide custom tasks:
@@ -46,6 +47,12 @@ node cli.js --mode=parallelLimit --limit=2 --failFast
 Provide tasks as JSON:
 ```bash
 node cli.js --mode=parallel --tasks='[{"duration":200},{"duration":400,"fail":true}]'
+```
+
+Add a timeout for each task:
+```bash
+node cli.js --mode=parallel --timeoutMs=150
+# alias: --timeout=150
 ```
 
 ## UI
@@ -75,6 +82,8 @@ Both API and CLI return a structured summary object:
     { "id": 2, "status": "error", "startedAt": ..., "finishedAt": ..., "durationMs": 120, "error": "Task 2 failed" }
   ]
 }
+
+If a task exceeds `timeoutMs`, it is marked as an error with `error: "Task N timed out after X ms"`.
 
 ## Testing
 

@@ -59,3 +59,21 @@ test('failFast stops early in parallelLimit', async () => {
   const tasks = [makeTask(10, stats), makeTask(10, stats, true), makeTask(10, stats)];
   await assert.rejects(() => runParallelLimit(tasks, 2, { failFast: true }));
 });
+
+test('timeout marks long task as error (parallel)', async () => {
+  const stats = { current: 0, max: 0 };
+  const tasks = [makeTask(30, stats), makeTask(120, stats), makeTask(40, stats)];
+  const summary = await runParallel(tasks, { timeoutMs: 60 });
+  assert.equal(summary.failed, 1);
+  const errs = summary.results.filter(r => r.status === 'error');
+  assert.equal(errs.length, 1);
+  assert.match(errs[0].error, /timed out/i);
+});
+
+test('timeout works in sequential without failing others', async () => {
+  const stats = { current: 0, max: 0 };
+  const tasks = [makeTask(30, stats), makeTask(100, stats), makeTask(20, stats)];
+  const summary = await runSequential(tasks, { timeoutMs: 50, failFast: false });
+  assert.equal(summary.succeeded, 2);
+  assert.equal(summary.failed, 1);
+});
