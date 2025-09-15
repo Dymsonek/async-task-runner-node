@@ -30,6 +30,22 @@
           Timeout (ms)
           <input id="timeoutMs" type="number" min="1" placeholder="e.g. 300" />
         </label>
+        <label>
+          Retries
+          <input id="retries" type="number" min="0" placeholder="0" />
+        </label>
+        <label>
+          Retry delay (ms)
+          <input id="retryDelayMs" type="number" min="0" placeholder="100" />
+        </label>
+        <label>
+          Backoff
+          <input id="backoffFactor" type="number" min="1" step="0.1" placeholder="2" />
+        </label>
+        <label>
+          Jitter
+          <input id="jitterRatio" type="number" min="0" max="1" step="0.05" placeholder="0.2" />
+        </label>
         <label class="checkbox">
           <input id="failFast" type="checkbox" />
           failFast

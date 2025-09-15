@@ -4,6 +4,10 @@
   const limitEl = $('#limit');
   const timeoutMsEl = $('#timeoutMs');
   const failFastEl = $('#failFast');
+  const retriesEl = $('#retries');
+  const retryDelayMsEl = $('#retryDelayMs');
+  const backoffFactorEl = $('#backoffFactor');
+  const jitterRatioEl = $('#jitterRatio');
   const countEl = $('#count');
   const minEl = $('#min');
   const maxEl = $('#max');
@@ -32,6 +36,27 @@
       if (Number.isInteger(tVal) && tVal > 0) {
         payload.timeoutMs = tVal;
       }
+    }
+
+    const rStr = (retriesEl?.value || '').trim();
+    if (rStr) {
+      const v = parseInt(rStr, 10);
+      if (Number.isInteger(v) && v >= 0) payload.retries = v;
+    }
+    const rdStr = (retryDelayMsEl?.value || '').trim();
+    if (rdStr) {
+      const v = parseInt(rdStr, 10);
+      if (Number.isInteger(v) && v >= 0) payload.retryDelayMs = v;
+    }
+    const bfStr = (backoffFactorEl?.value || '').trim();
+    if (bfStr) {
+      const v = Number(bfStr);
+      if (Number.isFinite(v) && v >= 1) payload.backoffFactor = v;
+    }
+    const jrStr = (jitterRatioEl?.value || '').trim();
+    if (jrStr) {
+      const v = Number(jrStr);
+      if (Number.isFinite(v) && v >= 0 && v <= 1) payload.jitterRatio = v;
     }
 
     const txt = tasksJsonEl.value.trim();
