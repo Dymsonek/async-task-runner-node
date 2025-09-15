@@ -4,6 +4,11 @@ const minimist = require('minimist');
 
 (async () => {
   const argv = minimist(process.argv.slice(2));
+  if (argv.help || argv.h) {
+    const out = `Usage: async-task-runner [options]\n\nOptions:\n  --mode <sequential|parallel|parallelLimit>\n  --limit <n>                     used with parallelLimit\n  --failFast                      stop on first failure\n  --timeoutMs, --timeout <ms>     per-task timeout\n  --retries <n>                   retry attempts\n  --retryDelayMs, --retryDelay <ms>\n  --backoffFactor, --backoff <n>  backoff multiplier\n  --jitterRatio, --jitter <0..1>  +/- jitter ratio\n  --tasks '<json>'                array or generator spec\n  --help                          show help\n\nExamples:\n  async-task-runner --mode=parallel\n  async-task-runner --mode=parallelLimit --limit=3 --retries=2 --retryDelay=100 --backoff=2 --jitter=0.2\n  async-task-runner --mode=parallel --tasks='[{"duration":200},{"duration":400,"fail":true}]'\n`;
+    process.stdout.write(out);
+    process.exit(0);
+  }
   const mode = argv.mode || 'sequential';
   const limit = parseInt(argv.limit ?? 2, 10);
   const failFast = Boolean(argv.failFast || argv['fail-fast']);

@@ -7,6 +7,13 @@
     "start": "node index.js",
     "test": "node --test || node tests/run-all.js"
   },
+  "bin": {
+    "async-task-runner": "./cli.js",
+    "atr": "./cli.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "author": "",
   "license": "ISC",
   "dependencies": {
