@@ -22,6 +22,12 @@ Start the server:
 npm start
 ```
 
+Health check:
+```bash
+curl http://localhost:3000/health
+# -> {"status":"ok","uptime":...,"pid":...,"version":"1.0.0"}
+```
+
 Send a POST request:
 ```bash
 curl -X POST http://localhost:3000/run -H "Content-Type: application/json" -d '{"mode":"parallelLimit", "limit":2, "failFast":false, "timeoutMs":300, "retries":2, "retryDelayMs":100, "backoffFactor":2, "jitterRatio":0.2}'
