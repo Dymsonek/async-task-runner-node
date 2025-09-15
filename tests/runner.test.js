@@ -46,6 +46,12 @@ test('parallel assigns stable sequential ids', async () => {
   assert.deepEqual(ids, [1, 2, 3]);
 });
 
+test('parallel failFast rejects early', async () => {
+  const stats = { current: 0, max: 0 };
+  const tasks = [makeTask(10, stats), makeTask(5, stats, true), makeTask(1, stats)];
+  await assert.rejects(() => runParallel(tasks, { failFast: true }));
+});
+
 test('parallelLimit enforces limit', async () => {
   const stats = { current: 0, max: 0 };
   const tasks = Array.from({ length: 6 }, () => makeTask(30, stats));
