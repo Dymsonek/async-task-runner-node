@@ -8,6 +8,10 @@ function createApp() {
   app.use(express.json());
   app.use(express.static('public'));
 
+  app.get('/health', (req, res) => {
+    res.json({ status: 'ok', uptime: process.uptime(), pid: process.pid, version });
+  });
+
   
 
   app.post('/run', async (req, res) => {
